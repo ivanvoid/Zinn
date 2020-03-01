@@ -90,7 +90,16 @@ def get_user_data(user, u_data, max_len=100):
 
     return u_data
 
+def log(user_xy, y_pred, ser_signal):
+    print('U:({u[0]:3d}, {u[1]:3d}) | Pred:({y[0]:3d},{y[1]:3d})'
+            '| Signal:{s}'.format(
+            u = user_xy, # user 
+            y = y_pred,     # y predicted
+            s = ser_signal))  # signal
+
+
 def main():
+    MODE = 'train'
     # Create white backgroung img
     win_shape = (512,512,3)
     img = np.zeros(win_shape) + 255
@@ -117,20 +126,27 @@ def main():
         data = read_signal(ser, data)
         u_data = get_user_data(user, u_data)
      
-        if i >= 100:
-            model.fit(data.reshape(-1,1), u_data)
-            y_pred = model.predict(data[-1].reshape(-1,1))
-            y_pred = tuple(y_pred[0].astype(int))
-        else:
-            y_pred = (0,0)
-            i += 1
+        if MODE == 'train':
+            if i >= 100:
+                model.fit(data.reshape(-1,1), u_data)
+                y_pred = model.predict(data[-1].reshape(-1,1))
+                y_pred = tuple(y_pred[0].astype(int))
+            else:
+                y_pred = (0,0)
+                i += 1
         
-        # Logs
-        print('U:({u[0]:3d}, {u[1]:3d}) | Pred:({y[0]:3d},{y[1]:3d})'
-                '| Signal:{s}'.format(
-            u = u_data[-1], # user 
-            y = y_pred,     # y predicted
-            s = data[-1]))  # signal
+            # Logs
+            log(u_data[-1], y_pred, data[-1])
+        
+        elif MODE == 'test':
+            y_pred = model.predict(data[-1].reshape(-1,1))
+            print(y_pred)
+            y_pred = tuple(y_pred[0].astype(int))
+    
+            print('TEST: ', y_pred)
+
+            user.set_x(-12)
+            user.set_y(-12)
 
         # Window settings
         img = render(img, user, y_pred)
@@ -156,7 +172,16 @@ def main():
             user.set_x(user.get_coordinats()[0] - speed)
         elif k == 100: # d
             user.set_x(user.get_coordinats()[0] + speed)
-   
+        elif k == 109: # m. Switch mode train/test
+            if MODE == 'train': 
+                MODE = 'test'
+            else:
+                MODE = 'train'
+                user.set_x(50)
+                user.set_y(50)
+        #else:
+        #    print(k)
+        
     cv2.destroyAllWindows()
 
 main()
