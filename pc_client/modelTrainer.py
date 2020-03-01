@@ -2,10 +2,18 @@
 # -*-  coding: utf-8 -*-
 
 from sklearn.linear_model import LinearRegression
+from sklearn.neural_network import MLPRegressor
 
 import numpy as np
 import serial
 import cv2
+
+# Ignore warnings
+import sys
+
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
 
 class User():
     '''
@@ -44,7 +52,10 @@ class Model():
     def __init__(self):
         self.x = 0
         self.y = 0
-        self.lr = LinearRegression()
+        #self.lr = LinearRegression()
+        self.lr = MLPRegressor(
+                hidden_layer_sizes=(50,50),
+                learning_rate_init=0.001)
 
     def fit(self, X, y):
         self.lr.fit(X, y)
@@ -140,7 +151,6 @@ def main():
         
         elif MODE == 'test':
             y_pred = model.predict(data[-1].reshape(-1,1))
-            print(y_pred)
             y_pred = tuple(y_pred[0].astype(int))
     
             print('TEST: ', y_pred)
@@ -164,7 +174,6 @@ def main():
         if k == 27 or k == 113: # Esc or q
             break
         elif k == 119: # w
-            print(user.get_coordinats()[0])
             user.set_y(user.get_coordinats()[1] - speed)
         elif k == 115: # s
             user.set_y(user.get_coordinats()[1] + speed)
