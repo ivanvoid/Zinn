@@ -13,17 +13,31 @@ class User():
     '''
     def __init__(self, width, height):
         self.length = 10
-        self.center = (width // 2, height // 2) 
+        self.x = width // 2 
+        self.y = height // 2
         self.cross_coords = [
-            (self.center[0] - self.length, self.center[1] - self.length),
-            (self.center[0] + self.length, self.center[1] + self.length),
-            (self.center[0] - self.length, self.center[1] + self.length),
-            (self.center[0] + self.length, self.center[1] - self.length)]
-        self.x = self.center[0]
-        self.y = self.center[1]
- 
+            (self.x - self.length, self.y - self.length),
+            (self.x + self.length, self.y + self.length),
+            (self.x - self.length, self.y + self.length),
+            (self.x + self.length, self.y - self.length)]
+
+    def _recompute_cross(self):
+        self.cross_coords = [
+            (self.x - self.length, self.y - self.length),
+            (self.x + self.length, self.y + self.length),
+            (self.x - self.length, self.y + self.length),
+            (self.x + self.length, self.y - self.length)]
+
     def get_coordinats(self):
         return np.array([self.x, self.y])
+
+    def set_x(self, x):
+        self.x = x
+        self._recompute_cross()
+
+    def set_y(self, y):
+        self.y = y
+        self._recompute_cross()
 
 
 class Model():
@@ -41,7 +55,7 @@ class Model():
         return y_pred
 
 def render(img, user, pred_xy):
-    # AI circle prediction
+    # Model circle radius 
     r = 10
 
     # Render objects
@@ -51,8 +65,8 @@ def render(img, user, pred_xy):
         (0,0,0), 2, lineType=cv2.LINE_AA)
     img = cv2.line(img, user.cross_coords[2], user.cross_coords[3], 
         (0,0,0), 2, lineType=cv2.LINE_AA)
-    img = cv2.circle(img, user.center, 5, (255,255,255), -1)
-    img = cv2.circle(img, user.center, 2, (0,0,0), 
+    img = cv2.circle(img, (user.x,user.y), 5, (255,255,255), -1)
+    img = cv2.circle(img, (user.x,user.y), 2, (0,0,0), 
             -1, lineType=cv2.LINE_AA)
     
     return img
@@ -78,7 +92,7 @@ def get_user_data(user, u_data, max_len=100):
 
 def main():
     # Create white backgroung img
-    win_shape = (512,1024,3)
+    win_shape = (512,512,3)
     img = np.zeros(win_shape) + 255
 
     # Setup serial 
@@ -122,12 +136,27 @@ def main():
         img = render(img, user, y_pred)
         win_name = 'modelTrainer'
         cv2.imshow(win_name, img)
-        cv2.moveWindow(win_name, 30,30)
+        cv2.moveWindow(win_name, 2,2)
         
+        # Clear img
+        img = np.zeros(win_shape) + 255
+
         # Keys listener
-        if cv2.waitKey(10) & 0xFF == ord('q'):
+        k = cv2.waitKey(10)
+        speed = 10
+
+        if k == 27 or k == 113: # Esc or q
             break
-    
+        elif k == 119: # w
+            print(user.get_coordinats()[0])
+            user.set_y(user.get_coordinats()[1] - speed)
+        elif k == 115: # s
+            user.set_y(user.get_coordinats()[1] + speed)
+        elif k == 97:  # a
+            user.set_x(user.get_coordinats()[0] - speed)
+        elif k == 100: # d
+            user.set_x(user.get_coordinats()[0] + speed)
+   
     cv2.destroyAllWindows()
 
 main()
