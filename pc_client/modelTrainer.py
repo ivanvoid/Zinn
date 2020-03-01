@@ -8,6 +8,9 @@ import serial
 import cv2
 
 class User():
+    '''
+        This class for target manipulation on PC
+    '''
     def __init__(self, width, height):
         self.length = 10
         self.center = (width // 2, height // 2) 
@@ -22,6 +25,7 @@ class User():
     def get_coordinats(self):
         return np.array([self.x, self.y])
 
+
 class Model():
     def __init__(self):
         self.x = 0
@@ -30,7 +34,6 @@ class Model():
 
     def fit(self, X, y):
         self.lr.fit(X, y)
-        #        print('Fit')
 
     def predict(self, X):
         y_pred = self.lr.predict(X)
@@ -39,11 +42,10 @@ class Model():
 
 def render(img, user, pred_xy):
     # AI circle prediction
-    ai_coords = (256,256)
     r = 10
 
     # Render objects
-    img = cv2.circle(img, ai_coords, r, (0,255,0), -1)
+    img = cv2.circle(img, pred_xy, r, (0,255,0), -1)
 
     img = cv2.line(img, user.cross_coords[0], user.cross_coords[1], 
         (0,0,0), 2, lineType=cv2.LINE_AA)
@@ -65,6 +67,7 @@ def read_signal(serialport, data, max_len = 100):
     
     return data
 
+
 def get_user_data(user, u_data, max_len=100):
     u_data = np.append(u_data,[user.get_coordinats()], axis=0)
     
@@ -75,7 +78,7 @@ def get_user_data(user, u_data, max_len=100):
 
 def main():
     # Create white backgroung img
-    win_shape = (512,512,3)
+    win_shape = (512,1024,3)
     img = np.zeros(win_shape) + 255
 
     # Setup serial 
@@ -85,7 +88,7 @@ def main():
     ser = serial.Serial(path, freq, timeout=tout)
 
     # Creating User
-    user = User(img.shape[0], img.shape[0])
+    user = User(img.shape[1], img.shape[0])
 
     # Creating ai model
     model = Model()
@@ -94,24 +97,34 @@ def main():
     data = np.array([])
     u_data = [user.get_coordinats()]
 
-    i = 0
+    i = 0 # Waiting for more data to be collected
+
     while True:
         data = read_signal(ser, data)
         u_data = get_user_data(user, u_data)
      
-#        if i >= 100:
-#            model.fit(data.reshape(-1,1), user_coords)
-#            y_pred = model.predict(data)
-#        else:
-#            i += 1
+        if i >= 100:
+            model.fit(data.reshape(-1,1), u_data)
+            y_pred = model.predict(data[-1].reshape(-1,1))
+            y_pred = tuple(y_pred[0].astype(int))
+        else:
+            y_pred = (0,0)
+            i += 1
         
-        print('Data shape',data.reshape(-1,1).shape)
-        print('User data shape', u_data.shape)
-        y_pred=(42,42)
-        
+        # Logs
+        print('U:({u[0]:3d}, {u[1]:3d}) | Pred:({y[0]:3d},{y[1]:3d})'
+                '| Signal:{s}'.format(
+            u = u_data[-1], # user 
+            y = y_pred,     # y predicted
+            s = data[-1]))  # signal
+
+        # Window settings
         img = render(img, user, y_pred)
-        cv2.imshow('modelTrain', img)
+        win_name = 'modelTrainer'
+        cv2.imshow(win_name, img)
+        cv2.moveWindow(win_name, 30,30)
         
+        # Keys listener
         if cv2.waitKey(10) & 0xFF == ord('q'):
             break
     
